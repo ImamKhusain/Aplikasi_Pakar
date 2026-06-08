@@ -31,7 +31,7 @@ from core.database import (
     get_related_rules_count,
 )
 from core.data_loader import load_data, get_symptom_categories, clear_cache
-from core.engine import diagnose
+from core.engine import diagnose, get_related_symptoms
 
 init_database()
 
@@ -212,6 +212,7 @@ elif menu == "🩺 Diagnosa":
     st.markdown("Pilih gejala-gejala yang dialami bayi, lalu klik **Mulai Diagnosa**.")
     st.markdown("---")
 
+    # --- Symptom Selection ---
     categories = get_symptom_categories(gejala_df)
     selected_gejala = []
 
@@ -235,9 +236,46 @@ elif menu == "🩺 Diagnosa":
 
     if selected_gejala:
         st.success(f"✅ **{len(selected_gejala)}** gejala dipilih")
+
+        # === GUIDED DIAGNOSIS: Show related symptom suggestions ===
+        suggestions = get_related_symptoms(
+            selected_gejala, rules_fc_df, penyakit_df, gejala_df
+        )
+
+        if suggestions:
+            st.markdown("---")
+            st.subheader("💡 Saran Gejala Terkait")
+            st.markdown(
+                "Berdasarkan gejala yang Anda pilih, berikut gejala lain yang mungkin "
+                "perlu diperiksa untuk memperkuat diagnosa:"
+            )
+
+            for sg in suggestions:
+                with st.expander(
+                    f"🔗 Kemungkinan: **{sg['nama_penyakit']}** ({sg['id_penyakit']}) "
+                    f"— {sg['matched_count']}/{sg['total_needed']} gejala cocok "
+                    f"({sg['completion_pct']:.0f}%)",
+                    expanded=(sg['completion_pct'] >= 30),
+                ):
+                    # Progress bar for rule completion
+                    st.progress(
+                        sg['completion_pct'] / 100,
+                        text=f"Kelengkapan gejala: {sg['matched_count']}/{sg['total_needed']} ({sg['completion_pct']:.0f}%)",
+                    )
+
+                    st.markdown("**Gejala yang disarankan untuk diperiksa:**")
+                    for sym in sg['suggested_symptoms']:
+                        rule_info = ", ".join(sym['from_rules'])
+                        st.markdown(
+                            f"- 👉 **{sym['id_gejala']}** — {sym['nama_gejala']} "
+                            f"_(dari rule: {rule_info})_"
+                        )
+
+            st.markdown("---")
     else:
         st.info("ℹ️ Belum ada gejala yang dipilih. Silakan pilih gejala di atas.")
 
+    # --- Diagnose Button ---
     diagnose_clicked = st.button(
         "🔍 Mulai Diagnosa", type="primary", use_container_width=True,
     )

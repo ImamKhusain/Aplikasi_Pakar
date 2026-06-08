@@ -18,6 +18,111 @@ CRITICAL: The mathematical logic below is verified and MUST NOT be altered.
 import re
 
 
+def get_related_symptoms(selected_gejala, rules_fc_df, penyakit_df, gejala_df):
+    """
+    Find symptoms related to the currently selected ones via forward chaining rules.
+
+    Scans all FC rules for any rule that contains at least one of the selected
+    symptoms. Returns the OTHER symptoms from those rules (the ones not yet
+    selected) as suggestions, grouped by the disease they point to.
+
+    Parameters
+    ----------
+    selected_gejala : list
+        Currently selected symptom IDs
+    rules_fc_df : pd.DataFrame
+        Forward chaining rules
+    penyakit_df : pd.DataFrame
+        Disease data for name lookups
+    gejala_df : pd.DataFrame
+        Symptom data for name lookups
+
+    Returns
+    -------
+    list[dict]
+        Sorted list of suggestion groups (most matched first). Each dict:
+        - id_penyakit, nama_penyakit
+        - suggested_symptoms: list of {id_gejala, nama_gejala, from_rules}
+        - matched_count: how many selected symptoms appear in this disease's rules
+        - total_needed: total unique symptoms across all rules for this disease
+        - completion_pct: percentage of rule completion
+    """
+    if not selected_gejala:
+        return []
+
+    selected_set = set(selected_gejala)
+    gejala_lookup = dict(zip(gejala_df['id_gejala'], gejala_df['nama_gejala']))
+    penyakit_lookup = dict(zip(penyakit_df['id_penyakit'], penyakit_df['nama_penyakit']))
+
+    # Track: disease -> { symptom_id -> [rule_ids that mention it] }
+    disease_suggestions = {}  # id_penyakit -> {'suggested': {gid: [rules]}, 'matched': set}
+
+    for _, rule in rules_fc_df.iterrows():
+        rule_id = rule['id_rule']
+        condition_str = rule['kondisi_if']
+        penyakit_id = rule['id_penyakit']
+
+        parsed = _parse_condition(condition_str)
+        rule_symptoms = set(parsed['symptoms'])
+
+        # Check if ANY of the selected symptoms appear in this rule
+        overlap = rule_symptoms & selected_set
+        if not overlap:
+            continue
+
+        # Initialize disease entry
+        if penyakit_id not in disease_suggestions:
+            disease_suggestions[penyakit_id] = {
+                'suggested': {},  # gid -> [rule_ids]
+                'matched': set(),
+                'all_symptoms': set(),
+            }
+
+        disease_suggestions[penyakit_id]['matched'].update(overlap)
+        disease_suggestions[penyakit_id]['all_symptoms'].update(rule_symptoms)
+
+        # Find symptoms in this rule that are NOT yet selected -> suggestions
+        missing = rule_symptoms - selected_set
+        for gid in missing:
+            if gid not in disease_suggestions[penyakit_id]['suggested']:
+                disease_suggestions[penyakit_id]['suggested'][gid] = []
+            disease_suggestions[penyakit_id]['suggested'][gid].append(rule_id)
+
+    # Build result list
+    results = []
+    for pid, info in disease_suggestions.items():
+        if not info['suggested']:
+            continue  # All symptoms already selected for this disease
+
+        suggested_list = []
+        for gid, rule_ids in info['suggested'].items():
+            suggested_list.append({
+                'id_gejala': gid,
+                'nama_gejala': gejala_lookup.get(gid, gid),
+                'from_rules': rule_ids,
+            })
+
+        # Sort suggestions by number of rules they appear in (most relevant first)
+        suggested_list.sort(key=lambda x: len(x['from_rules']), reverse=True)
+
+        total_unique = len(info['all_symptoms'])
+        matched_count = len(info['matched'])
+
+        results.append({
+            'id_penyakit': pid,
+            'nama_penyakit': penyakit_lookup.get(pid, pid),
+            'suggested_symptoms': suggested_list,
+            'matched_count': matched_count,
+            'total_needed': total_unique,
+            'completion_pct': (matched_count / total_unique * 100) if total_unique > 0 else 0,
+        })
+
+    # Sort by completion percentage (most progress first), then by matched count
+    results.sort(key=lambda x: (x['completion_pct'], x['matched_count']), reverse=True)
+
+    return results
+
+
 def _parse_condition(condition_str):
     """
     Parse a condition string from rules_forward.csv into a structured format.
