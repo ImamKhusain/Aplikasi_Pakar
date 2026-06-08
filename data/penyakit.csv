@@ -1,0 +1,21 @@
+id_penyakit,nama_penyakit
+P001,Tanda Bahaya Umum
+P002,Batuk
+P003,Pneumonia
+P004,Pneumonia Berat
+P005,Diare
+P006,Diare Dehidrasi Ringan
+P007,Diare Dehidrasi Berat
+P008,Diare Persisten
+P009,Disentri
+P010,Demam
+P011,Campak
+P012,Campak Komplikasi Berat
+P013,DBD
+P014,Demam Bukan DBD
+P015,ISPA
+P016,Asma Anak
+P017,Dehidrasi
+P018,Infeksi Telinga
+P019,Radang Tenggorokan
+P020,Alergi

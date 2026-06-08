@@ -1,0 +1,51 @@
+id_gejala,nama_gejala
+G001,Tidak bisa minum
+G002,Muntah semuanya
+G003,Kejang
+G004,Letargis
+G005,Tidak sadar
+G006,Nafsu makan menurun
+G007,Berat badan menurun
+G008,Rewel
+G009,Diare
+G010,Sangat mengantuk
+G011,Batuk
+G012,Pilek
+G013,Napas cepat
+G014,Sesak napas
+G015,Tarikan dinding dada
+G016,Napas mengi
+G017,Stridor
+G018,Bibir membiru
+G019,Demam disertai batuk
+G020,Hidung tersumbat
+G021,Diare cair
+G022,BAB >3 kali/hari
+G023,Muntah
+G024,Perut kembung
+G025,Mata cekung
+G026,Haus berlebihan
+G027,Produksi urin berkurang
+G028,BAB berdarah
+G029,BAB hitam
+G030,Nyeri perut
+G031,Demam
+G032,Demam tinggi mendadak
+G033,Demam >3 hari
+G034,Kaku kuduk
+G035,Berkeringat dingin
+G036,Pilek/infeksi ringan
+G037,Ruam merah
+G038,Batuk berdahak
+G039,Hidung tersumbat berat
+G040,Bersin
+G041,Mata berair
+G042,Gatal kulit
+G043,Ruam menyebar
+G044,Telinga nyeri
+G045,Sulit menelan
+G046,Tenggorokan merah
+G047,Mengi
+G048,Bibir membiru berat
+G049,Urin sangat sedikit
+G050,Berat badan turun
