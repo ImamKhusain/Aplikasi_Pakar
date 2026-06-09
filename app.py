@@ -89,6 +89,16 @@ user_role = user_info['role']
 # --- Load Data from SQLite ---
 gejala_df, penyakit_df, rules_cf_df, rules_fc_df = load_data()
 
+# --- Mapping skala keyakinan user untuk Certainty Factor ---
+# Nilai ini dipakai sebagai CF_user pada rumus: CF_gejala = CF_pakar × CF_user
+LIKERT_CF_USER = {
+    "Sangat Lemah": 0.2,
+    "Lemah": 0.4,
+    "Cukup Kuat": 0.6,
+    "Kuat": 0.8,
+    "Sangat Kuat": 1.0,
+}
+
 
 # =============================================
 # SIDEBAR — Navigation
@@ -206,15 +216,17 @@ if menu == "🏠 Beranda":
 
 # =============================================
 # PAGE: Diagnosa
-# =============================================
+# =============================================....
 elif menu == "🩺 Diagnosa":
     st.title("🩺 Diagnosa Penyakit Bayi")
-    st.markdown("Pilih gejala-gejala yang dialami bayi, lalu klik **Mulai Diagnosa**.")
+    st.markdown("Pilih gejala-gejala yang dialami bayi, tentukan tingkat keyakinan, lalu klik **Mulai Diagnosa**.")
     st.markdown("---")
 
     # --- Symptom Selection ---
     categories = get_symptom_categories(gejala_df)
     selected_gejala = []
+    gejala_cf_user = {}
+    gejala_lookup_ui = dict(zip(gejala_df["id_gejala"], gejala_df["nama_gejala"]))
 
     for cat_name, symptoms in categories.items():
         if not symptoms:
@@ -232,10 +244,40 @@ elif menu == "🩺 Diagnosa":
                 gid = sel.split("]")[0].replace("[", "").strip()
                 selected_gejala.append(gid)
 
+    # Hilangkan duplikasi gejala jika ada gejala yang muncul di lebih dari satu kategori
+    selected_gejala = list(dict.fromkeys(selected_gejala))
+
     st.markdown("---")
 
     if selected_gejala:
         st.success(f"✅ **{len(selected_gejala)}** gejala dipilih")
+
+        # === INPUT CF USER BERDASARKAN SKALA LIKERT ===
+        st.markdown("---")
+        st.subheader("📏 Tingkat Keyakinan User")
+        st.markdown(
+            "Tentukan seberapa yakin Anda bahwa setiap gejala benar-benar dialami bayi. "
+            "Nilai ini akan dipakai sebagai **CF User** pada perhitungan Certainty Factor."
+        )
+
+        likert_df = pd.DataFrame([
+            {"Interpretasi User": label, "CF User": nilai}
+            for label, nilai in LIKERT_CF_USER.items()
+        ])
+        st.dataframe(likert_df, use_container_width=True, hide_index=True)
+
+        with st.expander("📝 Isi tingkat keyakinan untuk setiap gejala", expanded=True):
+            for gid in selected_gejala:
+                nama_gejala = gejala_lookup_ui.get(gid, gid)
+                pilihan_keyakinan = st.select_slider(
+                    label=f"[{gid}] {nama_gejala}",
+                    options=list(LIKERT_CF_USER.keys()),
+                    value="Sangat Kuat",
+                    key=f"cf_user_{gid}",
+                )
+                gejala_cf_user[gid] = LIKERT_CF_USER[pilihan_keyakinan]
+
+        st.caption("Rumus yang digunakan: CF gejala = CF pakar × CF user.")
 
         # === GUIDED DIAGNOSIS: Show related symptom suggestions ===
         suggestions = get_related_symptoms(
@@ -287,7 +329,8 @@ elif menu == "🩺 Diagnosa":
             with st.spinner("Menjalankan proses diagnosa..."):
                 hasil = diagnose(
                     selected_gejala, rules_cf_df, rules_fc_df,
-                    penyakit_df, gejala_df
+                    penyakit_df, gejala_df,
+                    gejala_cf_user=gejala_cf_user,
                 )
 
             if hasil is None:
@@ -322,8 +365,10 @@ elif menu == "🩺 Diagnosa":
                 with st.expander("📋 Detail Gejala & Bobot CF", expanded=False):
                     for sym in utama['matched_symptoms']:
                         st.markdown(
-                            f"- **{sym['id_gejala']}** — {sym['nama_gejala']} "
-                            f"(Bobot CF: `{sym['bobot_cf']}`)"
+                            f"- **{sym['id_gejala']}** — {sym['nama_gejala']}  \n"
+                            f"  CF Pakar: `{sym['bobot_cf']}` | "
+                            f"CF User: `{sym.get('cf_user', 1.0)}` | "
+                            f"CF Gejala: `{sym.get('cf_gejala', sym['bobot_cf']):.4f}`"
                         )
 
                 with st.expander("🧮 Detail Perhitungan CF", expanded=False):
@@ -357,8 +402,10 @@ elif menu == "🩺 Diagnosa":
                                 st.markdown("**📋 Gejala yang cocok (CF):**")
                                 for sym in hd['matched_symptoms']:
                                     st.markdown(
-                                        f"- **{sym['id_gejala']}** — {sym['nama_gejala']} "
-                                        f"(Bobot CF: `{sym['bobot_cf']}`)"
+                                        f"- **{sym['id_gejala']}** — {sym['nama_gejala']}  \n"
+                                        f"  CF Pakar: `{sym['bobot_cf']}` | "
+                                        f"CF User: `{sym.get('cf_user', 1.0)}` | "
+                                        f"CF Gejala: `{sym.get('cf_gejala', sym['bobot_cf']):.4f}`"
                                     )
                                 st.markdown("**🧮 Perhitungan CF:**")
                                 for step in hd['calculation_steps']:
@@ -380,7 +427,7 @@ elif menu == "🩺 Diagnosa":
                         "CF Akhir": f"{h['cf_akhir']:.4f}",
                         "Persentase": f"{h['persentase']:.2f}%",
                     })
-                st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)#..
 
 
 # =============================================
@@ -558,6 +605,26 @@ elif menu == "ℹ️ Tentang Metode":
     st.latex(r"CF_{combine}(CF_1, CF_2) = CF_1 + CF_2 \times (1 - CF_1)")
 
     st.markdown("""
+    Pada sistem ini, nilai CF setiap gejala dihitung dari kombinasi antara 
+    **CF Pakar** dan **CF User**. CF Pakar berasal dari basis aturan, sedangkan 
+    CF User berasal dari tingkat keyakinan pengguna terhadap gejala yang dipilih.
+    """)
+
+    st.latex(r"CF_{gejala} = CF_{pakar} \times CF_{user}")
+
+    st.markdown("""
+    **Skala CF User:**
+
+    | Interpretasi User | CF User |
+    |:---|:---:|
+    | Sangat Lemah | 0.2 |
+    | Lemah | 0.4 |
+    | Cukup Kuat | 0.6 |
+    | Kuat | 0.8 |
+    | Sangat Kuat | 1.0 |
+    """)
+
+    st.markdown("""
     **Contoh perhitungan:**
     - Misal gejala A memiliki CF = 0.8 terhadap penyakit X
     - Misal gejala B memiliki CF = 0.6 terhadap penyakit X
@@ -586,8 +653,8 @@ elif menu == "ℹ️ Tentang Metode":
     ┌──────────────────────────────┐
     │  TAHAP 2: CERTAINTY FACTOR  │
     │  Hitung dari rules CF        │
-    │  CF_combine = CF1 + CF2×     │
-    │              (1 - CF1)       │
+    │  CF gejala = CF pakar × user │
+    │  lalu CF_combine             │
     │  → Berapa tingkat kepastian? │
     └──────────┬───────────────────┘
                │

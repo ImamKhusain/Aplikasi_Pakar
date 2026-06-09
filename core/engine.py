@@ -233,32 +233,24 @@ def forward_chaining(selected_gejala, rules_fc_df, gejala_df):
     return triggered if triggered else None
 
 
-def calculate_cf(penyakit_id, selected_gejala, rules_cf_df, gejala_lookup):
+def calculate_cf(penyakit_id, selected_gejala, rules_cf_df, gejala_lookup, gejala_cf_user=None):
     """
     Phase 2: Calculate Certainty Factor for a single disease.
 
-    Only considers CF rules where the symptom was selected by the user.
+    CF final per gejala = CF_pakar × CF_user (jika gejala_cf_user disediakan)
+    CF_combine = CF1 + CF2 * (1 - CF1)
 
     Parameters
     ----------
-    penyakit_id : str
-        Disease ID to calculate CF for
-    selected_gejala : list
-        Selected symptom IDs
-    rules_cf_df : pd.DataFrame
-        CF rules with columns: id_rule, id_penyakit, id_gejala, bobot_cf
-    gejala_lookup : dict
-        Mapping of symptom ID -> symptom name
-
-    Returns
-    -------
-    dict
-        CF calculation result with cf_akhir, persentase, matched_symptoms,
-        and calculation_steps
+    gejala_cf_user : dict, optional
+        Mapping id_gejala -> nilai keyakinan user (0.2, 0.4, 0.6, 0.8, 1.0)
+        Jika None, dianggap user 100% yakin (CF_user = 1.0)
     """
+    if gejala_cf_user is None:
+        gejala_cf_user = {}
+
     selected_set = set(selected_gejala)
 
-    # Get CF rules for this disease where the symptom was selected
     disease_rules = rules_cf_df[
         (rules_cf_df['id_penyakit'] == penyakit_id) &
         (rules_cf_df['id_gejala'].isin(selected_set))
@@ -269,26 +261,36 @@ def calculate_cf(penyakit_id, selected_gejala, rules_cf_df, gejala_lookup):
     calculation_steps = []
 
     for _, rule_row in disease_rules.iterrows():
-        cf_gejala = rule_row['bobot_cf']
+        cf_pakar = rule_row['bobot_cf']
         gejala_id = rule_row['id_gejala']
         gejala_nama = gejala_lookup.get(gejala_id, gejala_id)
+
+        # Ambil keyakinan user untuk gejala ini, default 1.0 jika tidak diisi
+        cf_user = gejala_cf_user.get(gejala_id, 1.0)
+
+        # CF gejala = CF pakar × CF user
+        cf_gejala = cf_pakar * cf_user
 
         matched_symptoms.append({
             'id_gejala': gejala_id,
             'nama_gejala': gejala_nama,
-            'bobot_cf': cf_gejala,
+            'bobot_cf': cf_pakar,
+            'cf_user': cf_user,
+            'cf_gejala': cf_gejala,
         })
 
         if cf_old == 0:
             cf_old = cf_gejala
             calculation_steps.append(
-                f"CF awal = {cf_gejala} (dari gejala {gejala_id}: {gejala_nama})"
+                f"CF awal = CF_pakar({cf_pakar}) × CF_user({cf_user}) "
+                f"= {cf_gejala:.4f} (gejala {gejala_id}: {gejala_nama})"
             )
         else:
             cf_new = cf_old + cf_gejala * (1 - cf_old)
             calculation_steps.append(
-                f"CF_combine = {cf_old:.4f} + {cf_gejala} × (1 - {cf_old:.4f}) "
-                f"= {cf_new:.4f} (gejala {gejala_id}: {gejala_nama})"
+                f"CF_combine = {cf_old:.4f} + {cf_gejala:.4f} × (1 - {cf_old:.4f}) "
+                f"= {cf_new:.4f} | CF_pakar({cf_pakar}) × CF_user({cf_user}) "
+                f"(gejala {gejala_id}: {gejala_nama})"
             )
             cf_old = cf_new
 
@@ -300,7 +302,7 @@ def calculate_cf(penyakit_id, selected_gejala, rules_cf_df, gejala_lookup):
     }
 
 
-def diagnose(selected_gejala, rules_cf_df, rules_fc_df, penyakit_df, gejala_df):
+def diagnose(selected_gejala, rules_cf_df, rules_fc_df, penyakit_df, gejala_df, gejala_cf_user=None):
     """
     Full diagnosis pipeline: Forward Chaining → Certainty Factor.
 
@@ -348,8 +350,9 @@ def diagnose(selected_gejala, rules_cf_df, rules_fc_df, penyakit_df, gejala_df):
 
         # Calculate CF
         cf_result = calculate_cf(
-            penyakit_id, selected_gejala, rules_cf_df, gejala_lookup
+            penyakit_id, selected_gejala, rules_cf_df, gejala_lookup,gejala_cf_user=gejala_cf_user
         )
+        
 
         # Build forward chaining detail for display
         fc_detail = []
