@@ -14,7 +14,6 @@ import re
 # --- Page Configuration (must be the first Streamlit command) ---
 st.set_page_config(
     page_title="Sistem Pakar — Diagnosa Penyakit Bayi",
-    page_icon="👶",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -32,6 +31,7 @@ from core.database import (
 )
 from core.data_loader import load_data, get_symptom_categories, clear_cache
 from core.engine import diagnose, get_related_symptoms
+from login import show_login_page
 
 init_database()
 
@@ -40,43 +40,15 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user_info" not in st.session_state:
     st.session_state.user_info = None
+if "remember_me" not in st.session_state:
+    st.session_state.remember_me = False
 
 
 # =============================================
-# LOGIN PAGE (shown when not logged in)
+# LOGIN PAGE
 # =============================================
 if not st.session_state.logged_in:
-    # Center the login form
-    col_left, col_center, col_right = st.columns([1, 2, 1])
-
-    with col_center:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.title("👶 Sistem Pakar Diagnosa Penyakit Bayi")
-        st.subheader("Silakan login untuk melanjutkan")
-        st.markdown("---")
-
-        with st.form("login_form"):
-            username = st.text_input("👤 Username")
-            password = st.text_input("🔑 Password", type="password")
-
-            submitted = st.form_submit_button("🔐 Login", use_container_width=True, type="primary")
-
-            if submitted:
-                if not username or not password:
-                    st.error("❌ Username dan password harus diisi!")
-                else:
-                    user = authenticate(username, password)
-                    if user:
-                        st.session_state.logged_in = True
-                        st.session_state.user_info = user
-                        st.rerun()
-                    else:
-                        st.error("❌ Username atau password salah!")
-
-        st.markdown("---")
-        st.caption("Sistem Pakar Diagnosa Penyakit Pada Bayi — Metode Forward Chaining & Certainty Factor")
-
-    # Stop here — don't render anything else
+    show_login_page(authenticate)
     st.stop()
 
 
@@ -103,42 +75,43 @@ LIKERT_CF_USER = {
 # =============================================
 # SIDEBAR — Navigation
 # =============================================
-st.sidebar.title("👶 Sistem Pakar Bayi")
+st.sidebar.title("Sistem Pakar Bayi")
 st.sidebar.markdown("---")
 
 # User info
 st.sidebar.success(
-    f"👤 **{user_info['nama_lengkap']}**\n\n"
+    f"**{user_info['nama_lengkap']}**\n\n"
     f"Role: **{user_info['role'].upper()}**"
 )
 
 # Logout
-if st.sidebar.button("🚪 Logout", use_container_width=True):
+if st.sidebar.button("Logout", use_container_width=True):
     st.session_state.logged_in = False
     st.session_state.user_info = None
+    st.session_state.remember_me = False
     st.rerun()
 
 st.sidebar.markdown("---")
 
 # Menu options based on role
 menu_options = [
-    "🏠 Beranda",
-    "🩺 Diagnosa",
-    "📚 Data Penyakit",
-    "📋 Data Gejala",
-    "📐 Data Rules CF",
-    "⚡ Data Rules Forward Chaining",
-    "ℹ️ Tentang Metode",
+    "Beranda",
+    "Diagnosa",
+    "Data Penyakit",
+    "Data Gejala",
+    "Data Rules CF",
+    "Data Rules Forward Chaining",
+    "Tentang Metode",
 ]
 
 if user_role == "admin":
-    menu_options.append("🔐 Admin Panel")
+    menu_options.append("Admin Panel")
 
 menu = st.sidebar.radio("Navigasi", options=menu_options)
 
 st.sidebar.markdown("---")
 st.sidebar.info(
-    f"📊 **Statistik Data**\n\n"
+    f"**Statistik Data**\n\n"
     f"- Gejala: **{len(gejala_df)}**\n"
     f"- Penyakit: **{len(penyakit_df)}**\n"
     f"- Rules CF: **{len(rules_cf_df)}**\n"
@@ -149,8 +122,8 @@ st.sidebar.info(
 # =============================================
 # PAGE: Beranda
 # =============================================
-if menu == "🏠 Beranda":
-    st.title("👶 Sistem Pakar Diagnosa Penyakit Pada Bayi")
+if menu == "Beranda":
+    st.title("Sistem Pakar Diagnosa Penyakit Pada Bayi")
     st.subheader("Metode: Forward Chaining & Certainty Factor")
 
     st.markdown("""
@@ -174,9 +147,9 @@ if menu == "🏠 Beranda":
 
     st.markdown("---")
 
-    st.subheader("📌 Cara Penggunaan")
+    st.subheader("Cara Penggunaan")
     st.markdown("""
-    1. Buka menu **🩺 Diagnosa** di sidebar
+    1. Buka menu **Diagnosa** di sidebar
     2. Pilih gejala-gejala yang dialami bayi
     3. Klik tombol **Mulai Diagnosa**
     4. Sistem akan menjalankan **Forward Chaining** untuk menemukan penyakit yang cocok
@@ -184,7 +157,7 @@ if menu == "🏠 Beranda":
     6. Lihat detail proses FC dan perhitungan CF untuk transparansi hasil
     """)
 
-    st.subheader("🔄 Alur Kerja Sistem")
+    st.subheader("Alur Kerja Sistem")
     st.markdown("""
     ```
     Gejala Dipilih User
@@ -209,16 +182,16 @@ if menu == "🏠 Beranda":
     ```
     """)
 
-    st.subheader("📊 Daftar Penyakit yang Dapat Didiagnosa")
+    st.subheader("Daftar Penyakit yang Dapat Didiagnosa")
     for _, row in penyakit_df.iterrows():
         st.markdown(f"- **{row['id_penyakit']}** — {row['nama_penyakit']}")
 
 
 # =============================================
 # PAGE: Diagnosa
-# =============================================....
-elif menu == "🩺 Diagnosa":
-    st.title("🩺 Diagnosa Penyakit Bayi")
+# =============================================
+elif menu == "Diagnosa":
+    st.title("Diagnosa Penyakit Bayi")
     st.markdown("Pilih gejala-gejala yang dialami bayi, tentukan tingkat keyakinan, lalu klik **Mulai Diagnosa**.")
     st.markdown("---")
 
@@ -250,11 +223,11 @@ elif menu == "🩺 Diagnosa":
     st.markdown("---")
 
     if selected_gejala:
-        st.success(f"✅ **{len(selected_gejala)}** gejala dipilih")
+        st.success(f"**{len(selected_gejala)}** gejala dipilih")
 
         # === INPUT CF USER BERDASARKAN SKALA LIKERT ===
         st.markdown("---")
-        st.subheader("📏 Tingkat Keyakinan User")
+        st.subheader("Tingkat Keyakinan User")
         st.markdown(
             "Tentukan seberapa yakin Anda bahwa setiap gejala benar-benar dialami bayi. "
             "Nilai ini akan dipakai sebagai **CF User** pada perhitungan Certainty Factor."
@@ -266,7 +239,7 @@ elif menu == "🩺 Diagnosa":
         ])
         st.dataframe(likert_df, use_container_width=True, hide_index=True)
 
-        with st.expander("📝 Isi tingkat keyakinan untuk setiap gejala", expanded=True):
+        with st.expander("Isi tingkat keyakinan untuk setiap gejala", expanded=True):
             for gid in selected_gejala:
                 nama_gejala = gejala_lookup_ui.get(gid, gid)
                 pilihan_keyakinan = st.select_slider(
@@ -286,7 +259,7 @@ elif menu == "🩺 Diagnosa":
 
         if suggestions:
             st.markdown("---")
-            st.subheader("💡 Saran Gejala Terkait")
+            st.subheader("Saran Gejala Terkait")
             st.markdown(
                 "Berdasarkan gejala yang Anda pilih, berikut gejala lain yang mungkin "
                 "perlu diperiksa untuk memperkuat diagnosa:"
@@ -294,7 +267,7 @@ elif menu == "🩺 Diagnosa":
 
             for sg in suggestions:
                 with st.expander(
-                    f"🔗 Kemungkinan: **{sg['nama_penyakit']}** ({sg['id_penyakit']}) "
+                    f"Kemungkinan: **{sg['nama_penyakit']}** ({sg['id_penyakit']}) "
                     f"— {sg['matched_count']}/{sg['total_needed']} gejala cocok "
                     f"({sg['completion_pct']:.0f}%)",
                     expanded=(sg['completion_pct'] >= 30),
@@ -309,22 +282,22 @@ elif menu == "🩺 Diagnosa":
                     for sym in sg['suggested_symptoms']:
                         rule_info = ", ".join(sym['from_rules'])
                         st.markdown(
-                            f"- 👉 **{sym['id_gejala']}** — {sym['nama_gejala']} "
+                            f"- **{sym['id_gejala']}** — {sym['nama_gejala']} "
                             f"_(dari rule: {rule_info})_"
                         )
 
             st.markdown("---")
     else:
-        st.info("ℹ️ Belum ada gejala yang dipilih. Silakan pilih gejala di atas.")
+        st.info("Belum ada gejala yang dipilih. Silakan pilih gejala di atas.")
 
     # --- Diagnose Button ---
     diagnose_clicked = st.button(
-        "🔍 Mulai Diagnosa", type="primary", use_container_width=True,
+        "Mulai Diagnosa", type="primary", use_container_width=True,
     )
 
     if diagnose_clicked:
         if not selected_gejala:
-            st.warning("⚠️ Silakan pilih minimal satu gejala sebelum melakukan diagnosa!")
+            st.warning("Silakan pilih minimal satu gejala sebelum melakukan diagnosa!")
         else:
             with st.spinner("Menjalankan proses diagnosa..."):
                 hasil = diagnose(
@@ -335,17 +308,17 @@ elif menu == "🩺 Diagnosa":
 
             if hasil is None:
                 st.error(
-                    "❌ **Tidak Ditemukan Kecocokan**\n\n"
+                    "**Tidak Ditemukan Kecocokan**\n\n"
                     "Tidak ditemukan penyakit yang cocok dengan kombinasi gejala tersebut "
                     "berdasarkan rules forward chaining. "
                     "Coba pilih gejala yang berbeda atau tambahkan gejala lainnya."
                 )
             else:
                 st.markdown("---")
-                st.subheader("📊 Hasil Diagnosa")
+                st.subheader("Hasil Diagnosa")
 
                 utama = hasil[0]
-                st.markdown(f"### 🏆 Diagnosis Utama: **{utama['nama_penyakit']}**")
+                st.markdown(f"### Diagnosis Utama: **{utama['nama_penyakit']}**")
 
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -355,14 +328,14 @@ elif menu == "🩺 Diagnosa":
 
                 st.progress(utama['cf_akhir'])
 
-                with st.expander("⚡ Detail Forward Chaining", expanded=False):
+                with st.expander("Detail Forward Chaining", expanded=False):
                     st.markdown(f"**Penyakit:** {utama['nama_penyakit']} ({utama['id_penyakit']})")
                     st.markdown("**Rules yang ter-trigger:**")
                     for fc in utama['fc_triggered_rules']:
                         st.markdown(f"- **{fc['id_rule']}**: `IF {fc['kondisi_if']} THEN {utama['id_penyakit']}`")
                         st.markdown(f"  → Kondisi terpenuhi: {fc['kondisi_readable']}")
 
-                with st.expander("📋 Detail Gejala & Bobot CF", expanded=False):
+                with st.expander("Detail Gejala & Bobot CF", expanded=False):
                     for sym in utama['matched_symptoms']:
                         st.markdown(
                             f"- **{sym['id_gejala']}** — {sym['nama_gejala']}  \n"
@@ -371,7 +344,7 @@ elif menu == "🩺 Diagnosa":
                             f"CF Gejala: `{sym.get('cf_gejala', sym['bobot_cf']):.4f}`"
                         )
 
-                with st.expander("🧮 Detail Perhitungan CF", expanded=False):
+                with st.expander("Detail Perhitungan CF", expanded=False):
                     st.markdown(f"**Penyakit:** {utama['nama_penyakit']} ({utama['id_penyakit']})")
                     st.markdown("**Langkah-langkah perhitungan:**")
                     for step in utama['calculation_steps']:
@@ -380,7 +353,7 @@ elif menu == "🩺 Diagnosa":
 
                 if len(hasil) > 1:
                     st.markdown("---")
-                    st.subheader("📋 Kemungkinan Penyakit Lainnya")
+                    st.subheader("Kemungkinan Penyakit Lainnya")
 
                     for hd in hasil[1:]:
                         with st.container():
@@ -395,11 +368,11 @@ elif menu == "🩺 Diagnosa":
                             st.progress(hd['cf_akhir'])
 
                             with st.expander(f"Detail — {hd['nama_penyakit']}", expanded=False):
-                                st.markdown("**⚡ Forward Chaining — Rules yang ter-trigger:**")
+                                st.markdown("**Forward Chaining — Rules yang ter-trigger:**")
                                 for fc in hd['fc_triggered_rules']:
                                     st.markdown(f"- **{fc['id_rule']}**: `IF {fc['kondisi_if']} THEN {hd['id_penyakit']}`")
                                 st.markdown("---")
-                                st.markdown("**📋 Gejala yang cocok (CF):**")
+                                st.markdown("**Gejala yang cocok (CF):**")
                                 for sym in hd['matched_symptoms']:
                                     st.markdown(
                                         f"- **{sym['id_gejala']}** — {sym['nama_gejala']}  \n"
@@ -407,7 +380,7 @@ elif menu == "🩺 Diagnosa":
                                         f"CF User: `{sym.get('cf_user', 1.0)}` | "
                                         f"CF Gejala: `{sym.get('cf_gejala', sym['bobot_cf']):.4f}`"
                                     )
-                                st.markdown("**🧮 Perhitungan CF:**")
+                                st.markdown("**Perhitungan CF:**")
                                 for step in hd['calculation_steps']:
                                     st.markdown(f"- {step}")
                                 st.markdown(
@@ -415,7 +388,7 @@ elif menu == "🩺 Diagnosa":
                                 )
 
                 st.markdown("---")
-                st.subheader("📊 Ringkasan Semua Hasil")
+                st.subheader("Ringkasan Semua Hasil")
                 summary_data = []
                 for i, h in enumerate(hasil, 1):
                     summary_data.append({
@@ -433,8 +406,8 @@ elif menu == "🩺 Diagnosa":
 # =============================================
 # PAGE: Data Penyakit
 # =============================================
-elif menu == "📚 Data Penyakit":
-    st.title("📚 Data Penyakit")
+elif menu == "Data Penyakit":
+    st.title("Data Penyakit")
     st.markdown("Daftar penyakit yang terdapat dalam basis pengetahuan sistem pakar.")
     st.markdown("---")
 
@@ -442,7 +415,7 @@ elif menu == "📚 Data Penyakit":
     st.markdown(f"**Total Penyakit:** {len(penyakit_df)}")
 
     st.markdown("---")
-    st.subheader("📊 Jumlah Rules per Penyakit")
+    st.subheader("Jumlah Rules per Penyakit")
 
     cf_count = rules_cf_df.groupby('id_penyakit').size().reset_index(name='rules_cf')
     fc_count = rules_fc_df.groupby('id_penyakit').size().reset_index(name='rules_fc')
@@ -459,8 +432,8 @@ elif menu == "📚 Data Penyakit":
 # =============================================
 # PAGE: Data Gejala
 # =============================================
-elif menu == "📋 Data Gejala":
-    st.title("📋 Data Gejala")
+elif menu == "Data Gejala":
+    st.title("Data Gejala")
     st.markdown("Daftar gejala penyakit bayi dalam basis pengetahuan.")
     st.markdown("---")
 
@@ -468,7 +441,7 @@ elif menu == "📋 Data Gejala":
     st.markdown(f"**Total Gejala:** {len(gejala_df)}")
 
     st.markdown("---")
-    st.subheader("🔗 Relasi Gejala — Penyakit (CF)")
+    st.subheader("Relasi Gejala — Penyakit (CF)")
 
     search_gejala = st.selectbox(
         "Pilih gejala untuk melihat penyakit terkait:",
@@ -490,8 +463,8 @@ elif menu == "📋 Data Gejala":
 # =============================================
 # PAGE: Data Rules CF
 # =============================================
-elif menu == "📐 Data Rules CF":
-    st.title("📐 Data Rules — Certainty Factor")
+elif menu == "Data Rules CF":
+    st.title("Data Rules — Certainty Factor")
     st.markdown("Basis aturan (rules) yang menghubungkan gejala dengan penyakit beserta bobot CF-nya.")
     st.markdown("---")
 
@@ -512,7 +485,7 @@ elif menu == "📐 Data Rules CF":
     st.markdown(f"**Total Rules ditampilkan:** {len(display_rules)}")
 
     st.markdown("---")
-    st.subheader("📊 Distribusi Bobot CF")
+    st.subheader("Distribusi Bobot CF")
     cf_dist = rules_cf_df['bobot_cf'].value_counts().sort_index().reset_index()
     cf_dist.columns = ['Bobot CF', 'Jumlah Rules']
     st.bar_chart(cf_dist.set_index('Bobot CF'))
@@ -521,8 +494,8 @@ elif menu == "📐 Data Rules CF":
 # =============================================
 # PAGE: Data Rules Forward Chaining
 # =============================================
-elif menu == "⚡ Data Rules Forward Chaining":
-    st.title("⚡ Data Rules — Forward Chaining")
+elif menu == "Data Rules Forward Chaining":
+    st.title("Data Rules — Forward Chaining")
     st.markdown("Basis aturan forward chaining yang mendefinisikan kondisi logis (IF-THEN).")
     st.markdown("---")
 
@@ -555,7 +528,7 @@ elif menu == "⚡ Data Rules Forward Chaining":
     st.dataframe(display_fc_df, use_container_width=True, hide_index=True)
     st.markdown(f"**Total Rules ditampilkan:** {len(display_fc_df)}")
 
-    st.subheader("📜 Rules dalam Format IF-THEN")
+    st.subheader("Rules dalam Format IF-THEN")
     for _, row in display_fc_df.iterrows():
         st.code(
             f"[{row['Rule']}] IF {row['Kondisi (Readable)']} "
@@ -567,11 +540,11 @@ elif menu == "⚡ Data Rules Forward Chaining":
 # =============================================
 # PAGE: Tentang Metode
 # =============================================
-elif menu == "ℹ️ Tentang Metode":
-    st.title("ℹ️ Tentang Metode yang Digunakan")
+elif menu == "Tentang Metode":
+    st.title("Tentang Metode yang Digunakan")
     st.markdown("---")
 
-    st.subheader("⚡ Forward Chaining")
+    st.subheader("Forward Chaining")
     st.markdown("""
     **Forward Chaining** adalah metode penalaran maju (*data-driven*) dalam sistem pakar.
     Proses dimulai dari **fakta-fakta** (gejala yang dipilih pengguna) kemudian dicocokkan
@@ -591,7 +564,7 @@ elif menu == "ℹ️ Tentang Metode":
 
     st.markdown("---")
 
-    st.subheader("📊 Certainty Factor (CF)")
+    st.subheader("Certainty Factor (CF)")
     st.markdown("""
     **Certainty Factor** adalah metode untuk mengukur tingkat keyakinan/kepastian 
     terhadap suatu hipotesis berdasarkan fakta atau bukti yang ada.
@@ -635,7 +608,7 @@ elif menu == "ℹ️ Tentang Metode":
 
     st.markdown("---")
 
-    st.subheader("🔄 Alur Keseluruhan Sistem")
+    st.subheader("Alur Keseluruhan Sistem")
     st.markdown("""
     ```
     Input: Gejala yang dipilih user
@@ -666,7 +639,7 @@ elif menu == "ℹ️ Tentang Metode":
 
     st.markdown("---")
 
-    st.subheader("📏 Interpretasi Nilai CF")
+    st.subheader("Interpretasi Nilai CF")
     st.markdown("""
     | Rentang CF | Interpretasi |
     |:---:|:---|
@@ -681,24 +654,24 @@ elif menu == "ℹ️ Tentang Metode":
 # =============================================
 # PAGE: Admin Panel (only for admin role)
 # =============================================
-elif menu == "🔐 Admin Panel" and user_role == "admin":
-    st.title("🔐 Panel Admin")
+elif menu == "Admin Panel" and user_role == "admin":
+    st.title("Panel Admin")
     st.markdown("Kelola basis pengetahuan dan akun pengguna sistem pakar.")
     st.markdown("---")
 
     admin_tab = st.tabs([
-        "👥 Kelola Akun",
-        "🦠 Kelola Penyakit",
-        "🩺 Kelola Gejala",
-        "📐 Kelola Rules CF",
-        "⚡ Kelola Rules FC",
+        "Kelola Akun",
+        "Kelola Penyakit",
+        "Kelola Gejala",
+        "Kelola Rules CF",
+        "Kelola Rules FC",
     ])
 
     # ===========================================
     # TAB: Kelola Akun
     # ===========================================
     with admin_tab[0]:
-        st.subheader("👥 Kelola Akun Pengguna")
+        st.subheader("Kelola Akun Pengguna")
 
         users = get_all_users()
         users_df = pd.DataFrame(users)
@@ -711,7 +684,7 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
         st.markdown("---")
 
         # --- Add User ---
-        st.markdown("#### ➕ Tambah Akun Baru")
+        st.markdown("#### Tambah Akun Baru")
         with st.form("add_user", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -721,22 +694,22 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                 new_urole = st.selectbox("Role", options=["user", "admin"], key="new_urole")
                 new_unama = st.text_input("Nama Lengkap", key="new_unama")
 
-            if st.form_submit_button("➕ Tambah Akun", use_container_width=True):
+            if st.form_submit_button("Tambah Akun", use_container_width=True):
                 if not new_uname or not new_upass:
-                    st.error("❌ Username dan password harus diisi!")
+                    st.error("Username dan password harus diisi!")
                 elif len(new_upass) < 4:
-                    st.error("❌ Password minimal 4 karakter!")
+                    st.error("Password minimal 4 karakter!")
                 else:
                     if add_user(new_uname, new_upass, new_urole, new_unama):
-                        st.success(f"✅ Akun **{new_uname}** berhasil ditambahkan!")
+                        st.success(f"Akun **{new_uname}** berhasil ditambahkan!")
                         st.rerun()
                     else:
-                        st.error(f"❌ Username **{new_uname}** sudah digunakan!")
+                        st.error(f"Username **{new_uname}** sudah digunakan!")
 
         st.markdown("---")
 
         # --- Edit User ---
-        st.markdown("#### ✏️ Edit Akun")
+        st.markdown("#### Edit Akun")
         if users:
             edit_user_select = st.selectbox(
                 "Pilih akun:",
@@ -760,18 +733,18 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                         edit_urole = st.selectbox("Role", options=["user", "admin"], index=role_idx)
                         edit_unama = st.text_input("Nama Lengkap", value=current_user['nama_lengkap'] or "")
 
-                    if st.form_submit_button("💾 Simpan Perubahan", use_container_width=True):
+                    if st.form_submit_button("Simpan Perubahan", use_container_width=True):
                         pwd = edit_upass if edit_upass else None
                         if update_user(edit_uid, edit_uname, pwd, edit_urole, edit_unama):
-                            st.success(f"✅ Akun **{edit_uname}** berhasil diupdate!")
+                            st.success(f"Akun **{edit_uname}** berhasil diupdate!")
                             st.rerun()
                         else:
-                            st.error("❌ Username sudah digunakan oleh akun lain!")
+                            st.error("Username sudah digunakan oleh akun lain!")
 
         st.markdown("---")
 
         # --- Delete User ---
-        st.markdown("#### 🗑️ Hapus Akun")
+        st.markdown("#### Hapus Akun")
         if users:
             # Don't allow deleting the current logged-in user
             deletable = [u for u in users if u['id'] != user_info['id']]
@@ -783,9 +756,9 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                 )
                 if del_user_select:
                     del_uid = int(del_user_select.split("]")[0].replace("[", "").strip())
-                    if st.button("🗑️ Hapus Akun", key="btn_del_user", type="primary"):
+                    if st.button("Hapus Akun", key="btn_del_user", type="primary"):
                         delete_user(del_uid)
-                        st.success("✅ Akun berhasil dihapus!")
+                        st.success("Akun berhasil dihapus!")
                         st.rerun()
             else:
                 st.info("Tidak ada akun lain yang bisa dihapus.")
@@ -794,14 +767,14 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
     # TAB: Kelola Penyakit
     # ===========================================
     with admin_tab[1]:
-        st.subheader("🦠 Kelola Data Penyakit")
+        st.subheader("Kelola Data Penyakit")
 
         st.dataframe(penyakit_df, use_container_width=True, hide_index=True)
         st.caption(f"Total: {len(penyakit_df)} penyakit")
         st.markdown("---")
 
         # --- Add ---
-        st.markdown("#### ➕ Tambah Penyakit Baru")
+        st.markdown("#### Tambah Penyakit Baru")
         with st.form("add_penyakit", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -809,20 +782,20 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
             with col2:
                 new_pname = st.text_input("Nama Penyakit")
 
-            if st.form_submit_button("➕ Tambah Penyakit", use_container_width=True):
+            if st.form_submit_button("Tambah Penyakit", use_container_width=True):
                 if not new_pid or not new_pname:
-                    st.error("❌ ID dan Nama Penyakit harus diisi!")
+                    st.error("ID dan Nama Penyakit harus diisi!")
                 elif add_penyakit(new_pid, new_pname):
                     clear_cache()
-                    st.success(f"✅ Penyakit **{new_pname}** ({new_pid}) berhasil ditambahkan!")
+                    st.success(f"Penyakit **{new_pname}** ({new_pid}) berhasil ditambahkan!")
                     st.rerun()
                 else:
-                    st.error(f"❌ ID `{new_pid}` sudah ada!")
+                    st.error(f"ID `{new_pid}` sudah ada!")
 
         st.markdown("---")
 
         # --- Edit ---
-        st.markdown("#### ✏️ Edit Penyakit")
+        st.markdown("#### Edit Penyakit")
         if len(penyakit_df) > 0:
             edit_p = st.selectbox(
                 "Pilih penyakit:",
@@ -834,19 +807,19 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                 cur = penyakit_df[penyakit_df['id_penyakit'] == epid].iloc[0]
                 with st.form("edit_penyakit"):
                     epname = st.text_input("Nama Penyakit", value=cur['nama_penyakit'])
-                    if st.form_submit_button("💾 Simpan", use_container_width=True):
+                    if st.form_submit_button("Simpan", use_container_width=True):
                         if not epname:
-                            st.error("❌ Nama tidak boleh kosong!")
+                            st.error("Nama tidak boleh kosong!")
                         else:
                             update_penyakit(epid, epname)
                             clear_cache()
-                            st.success(f"✅ Penyakit **{epid}** berhasil diupdate!")
+                            st.success(f"Penyakit **{epid}** berhasil diupdate!")
                             st.rerun()
 
         st.markdown("---")
 
         # --- Delete ---
-        st.markdown("#### 🗑️ Hapus Penyakit")
+        st.markdown("#### Hapus Penyakit")
         if len(penyakit_df) > 0:
             del_p = st.selectbox(
                 "Pilih penyakit yang akan dihapus:",
@@ -857,25 +830,25 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                 dpid = del_p.split("]")[0].replace("[", "").strip()
                 counts = get_related_rules_count(id_penyakit=dpid)
                 if counts['cf'] > 0 or counts['fc'] > 0:
-                    st.warning(f"⚠️ Penyakit ini memiliki **{counts['cf']} rules CF** dan **{counts['fc']} rules FC** terkait. Semua akan dihapus!")
-                if st.button("🗑️ Hapus Penyakit", key="btn_del_p", type="primary"):
+                    st.warning(f"Penyakit ini memiliki **{counts['cf']} rules CF** dan **{counts['fc']} rules FC** terkait. Semua akan dihapus!")
+                if st.button("Hapus Penyakit", key="btn_del_p", type="primary"):
                     delete_penyakit(dpid)
                     clear_cache()
-                    st.success(f"✅ Penyakit **{dpid}** dan rules terkait berhasil dihapus!")
+                    st.success(f"Penyakit **{dpid}** dan rules terkait berhasil dihapus!")
                     st.rerun()
 
     # ===========================================
     # TAB: Kelola Gejala
     # ===========================================
     with admin_tab[2]:
-        st.subheader("🩺 Kelola Data Gejala")
+        st.subheader("Kelola Data Gejala")
 
         st.dataframe(gejala_df, use_container_width=True, hide_index=True)
         st.caption(f"Total: {len(gejala_df)} gejala")
         st.markdown("---")
 
         # --- Add ---
-        st.markdown("#### ➕ Tambah Gejala Baru")
+        st.markdown("#### Tambah Gejala Baru")
         with st.form("add_gejala", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -883,20 +856,20 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
             with col2:
                 new_gname = st.text_input("Nama Gejala")
 
-            if st.form_submit_button("➕ Tambah Gejala", use_container_width=True):
+            if st.form_submit_button("Tambah Gejala", use_container_width=True):
                 if not new_gid or not new_gname:
-                    st.error("❌ ID dan Nama Gejala harus diisi!")
+                    st.error("ID dan Nama Gejala harus diisi!")
                 elif add_gejala(new_gid, new_gname):
                     clear_cache()
-                    st.success(f"✅ Gejala **{new_gname}** ({new_gid}) berhasil ditambahkan!")
+                    st.success(f"Gejala **{new_gname}** ({new_gid}) berhasil ditambahkan!")
                     st.rerun()
                 else:
-                    st.error(f"❌ ID `{new_gid}` sudah ada!")
+                    st.error(f"ID `{new_gid}` sudah ada!")
 
         st.markdown("---")
 
         # --- Edit ---
-        st.markdown("#### ✏️ Edit Gejala")
+        st.markdown("#### Edit Gejala")
         if len(gejala_df) > 0:
             edit_g = st.selectbox(
                 "Pilih gejala:",
@@ -908,19 +881,19 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                 cur = gejala_df[gejala_df['id_gejala'] == egid].iloc[0]
                 with st.form("edit_gejala"):
                     egname = st.text_input("Nama Gejala", value=cur['nama_gejala'])
-                    if st.form_submit_button("💾 Simpan", use_container_width=True):
+                    if st.form_submit_button("Simpan", use_container_width=True):
                         if not egname:
-                            st.error("❌ Nama tidak boleh kosong!")
+                            st.error("Nama tidak boleh kosong!")
                         else:
                             update_gejala(egid, egname)
                             clear_cache()
-                            st.success(f"✅ Gejala **{egid}** berhasil diupdate!")
+                            st.success(f"Gejala **{egid}** berhasil diupdate!")
                             st.rerun()
 
         st.markdown("---")
 
         # --- Delete ---
-        st.markdown("#### 🗑️ Hapus Gejala")
+        st.markdown("#### Hapus Gejala")
         if len(gejala_df) > 0:
             del_g = st.selectbox(
                 "Pilih gejala yang akan dihapus:",
@@ -931,18 +904,18 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                 dgid = del_g.split("]")[0].replace("[", "").strip()
                 counts = get_related_rules_count(id_gejala=dgid)
                 if counts['cf'] > 0:
-                    st.warning(f"⚠️ Gejala ini digunakan di **{counts['cf']} rules CF**. Rules terkait juga akan dihapus!")
-                if st.button("🗑️ Hapus Gejala", key="btn_del_g", type="primary"):
+                    st.warning(f"Gejala ini digunakan di **{counts['cf']} rules CF**. Rules terkait juga akan dihapus!")
+                if st.button("Hapus Gejala", key="btn_del_g", type="primary"):
                     delete_gejala(dgid)
                     clear_cache()
-                    st.success(f"✅ Gejala **{dgid}** dan rules terkait berhasil dihapus!")
+                    st.success(f"Gejala **{dgid}** dan rules terkait berhasil dihapus!")
                     st.rerun()
 
     # ===========================================
     # TAB: Kelola Rules CF
     # ===========================================
     with admin_tab[3]:
-        st.subheader("📐 Kelola Rules Certainty Factor")
+        st.subheader("Kelola Rules Certainty Factor")
 
         display_cf = rules_cf_df.merge(penyakit_df, on='id_penyakit', how='left').merge(gejala_df, on='id_gejala', how='left')
         display_cf = display_cf[['id_rule', 'id_penyakit', 'nama_penyakit', 'id_gejala', 'nama_gejala', 'bobot_cf']]
@@ -951,7 +924,7 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
         st.markdown("---")
 
         # --- Add ---
-        st.markdown("#### ➕ Tambah Rule CF Baru")
+        st.markdown("#### Tambah Rule CF Baru")
         with st.form("add_rule_cf", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -973,25 +946,25 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                     key="new_cf_g",
                 )
 
-            if st.form_submit_button("➕ Tambah Rule CF", use_container_width=True):
+            if st.form_submit_button("Tambah Rule CF", use_container_width=True):
                 if not new_cf_p or not new_cf_g:
-                    st.error("❌ Penyakit dan Gejala harus dipilih!")
+                    st.error("Penyakit dan Gejala harus dipilih!")
                 else:
                     pid = new_cf_p.split("]")[0].replace("[", "").strip()
                     gid = new_cf_g.split("]")[0].replace("[", "").strip()
                     if check_duplicate_rule_cf(pid, gid):
-                        st.error(f"❌ Rule untuk kombinasi {pid} + {gid} sudah ada!")
+                        st.error(f"Rule untuk kombinasi {pid} + {gid} sudah ada!")
                     elif add_rule_cf(new_rid, pid, gid, new_bobot):
                         clear_cache()
-                        st.success(f"✅ Rule CF **{new_rid}** berhasil ditambahkan!")
+                        st.success(f"Rule CF **{new_rid}** berhasil ditambahkan!")
                         st.rerun()
                     else:
-                        st.error(f"❌ ID Rule `{new_rid}` sudah ada!")
+                        st.error(f"ID Rule `{new_rid}` sudah ada!")
 
         st.markdown("---")
 
         # --- Edit ---
-        st.markdown("#### ✏️ Edit Rule CF")
+        st.markdown("#### Edit Rule CF")
         if len(rules_cf_df) > 0:
             edit_cf = st.selectbox(
                 "Pilih rule:",
@@ -1015,18 +988,18 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
 
                     ecf_bobot = st.number_input("Bobot CF", 0.0, 1.0, float(cur['bobot_cf']), 0.1, key="ecf_bobot")
 
-                    if st.form_submit_button("💾 Simpan", use_container_width=True):
+                    if st.form_submit_button("Simpan", use_container_width=True):
                         pid = ecf_p.split("]")[0].replace("[", "").strip()
                         gid = ecf_g.split("]")[0].replace("[", "").strip()
                         update_rule_cf(erid, pid, gid, ecf_bobot)
                         clear_cache()
-                        st.success(f"✅ Rule **{erid}** berhasil diupdate!")
+                        st.success(f"Rule **{erid}** berhasil diupdate!")
                         st.rerun()
 
         st.markdown("---")
 
         # --- Delete ---
-        st.markdown("#### 🗑️ Hapus Rule CF")
+        st.markdown("#### Hapus Rule CF")
         if len(rules_cf_df) > 0:
             del_cf = st.selectbox(
                 "Pilih rule yang akan dihapus:",
@@ -1035,17 +1008,17 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
             )
             if del_cf:
                 drid = del_cf.split("]")[0].replace("[", "").strip()
-                if st.button("🗑️ Hapus Rule CF", key="btn_del_cf", type="primary"):
+                if st.button("Hapus Rule CF", key="btn_del_cf", type="primary"):
                     delete_rule_cf(drid)
                     clear_cache()
-                    st.success(f"✅ Rule **{drid}** berhasil dihapus!")
+                    st.success(f"Rule **{drid}** berhasil dihapus!")
                     st.rerun()
 
     # ===========================================
     # TAB: Kelola Rules FC
     # ===========================================
     with admin_tab[4]:
-        st.subheader("⚡ Kelola Rules Forward Chaining")
+        st.subheader("Kelola Rules Forward Chaining")
 
         display_fc_admin = rules_fc_df.merge(penyakit_df, on='id_penyakit', how='left')
         display_fc_admin = display_fc_admin[['id_rule', 'kondisi_if', 'id_penyakit', 'nama_penyakit']]
@@ -1054,7 +1027,7 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
         st.markdown("---")
 
         # --- Add ---
-        st.markdown("#### ➕ Tambah Rule FC Baru")
+        st.markdown("#### Tambah Rule FC Baru")
         st.markdown(
             "Format kondisi: gunakan **AND** atau **OR**. "
             "Contoh: `G011 AND G013 AND G015` atau `G001 OR G002`"
@@ -1091,32 +1064,32 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                 key="new_fc_manual", placeholder="Contoh: G011 AND G013",
             )
 
-            if st.form_submit_button("➕ Tambah Rule FC", use_container_width=True):
+            if st.form_submit_button("Tambah Rule FC", use_container_width=True):
                 final_kondisi = manual_kondisi.strip() if manual_kondisi.strip() else cond_preview
                 if not new_fc_p:
-                    st.error("❌ Penyakit harus dipilih!")
+                    st.error("Penyakit harus dipilih!")
                 elif not final_kondisi:
-                    st.error("❌ Kondisi IF harus diisi!")
+                    st.error("Kondisi IF harus diisi!")
                 else:
                     # Validate symptom IDs
                     cond_sids = re.findall(r'G\d+', final_kondisi)
                     valid_gids = set(gejala_df['id_gejala'].tolist())
                     invalid = [s for s in cond_sids if s not in valid_gids]
                     if invalid:
-                        st.error(f"❌ Gejala tidak valid: {', '.join(invalid)}")
+                        st.error(f"Gejala tidak valid: {', '.join(invalid)}")
                     else:
                         pid = new_fc_p.split("]")[0].replace("[", "").strip()
                         if add_rule_fc(new_fc_rid, final_kondisi, pid):
                             clear_cache()
-                            st.success(f"✅ Rule FC **{new_fc_rid}** berhasil ditambahkan!")
+                            st.success(f"Rule FC **{new_fc_rid}** berhasil ditambahkan!")
                             st.rerun()
                         else:
-                            st.error(f"❌ ID Rule `{new_fc_rid}` sudah ada!")
+                            st.error(f"ID Rule `{new_fc_rid}` sudah ada!")
 
         st.markdown("---")
 
         # --- Edit ---
-        st.markdown("#### ✏️ Edit Rule FC")
+        st.markdown("#### Edit Rule FC")
         if len(rules_fc_df) > 0:
             edit_fc = st.selectbox(
                 "Pilih rule:",
@@ -1133,26 +1106,26 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
                     efc_p = st.selectbox("Penyakit (THEN):", options=p_opts, index=p_idx, key="efc_p")
                     efc_kondisi = st.text_input("Kondisi IF:", value=cur['kondisi_if'], key="efc_kondisi")
 
-                    if st.form_submit_button("💾 Simpan", use_container_width=True):
+                    if st.form_submit_button("Simpan", use_container_width=True):
                         if not efc_kondisi.strip():
-                            st.error("❌ Kondisi IF tidak boleh kosong!")
+                            st.error("Kondisi IF tidak boleh kosong!")
                         else:
                             cond_sids = re.findall(r'G\d+', efc_kondisi)
                             valid_gids = set(gejala_df['id_gejala'].tolist())
                             invalid = [s for s in cond_sids if s not in valid_gids]
                             if invalid:
-                                st.error(f"❌ Gejala tidak valid: {', '.join(invalid)}")
+                                st.error(f"Gejala tidak valid: {', '.join(invalid)}")
                             else:
                                 pid = efc_p.split("]")[0].replace("[", "").strip()
                                 update_rule_fc(erid, efc_kondisi.strip(), pid)
                                 clear_cache()
-                                st.success(f"✅ Rule **{erid}** berhasil diupdate!")
+                                st.success(f"Rule **{erid}** berhasil diupdate!")
                                 st.rerun()
 
         st.markdown("---")
 
         # --- Delete ---
-        st.markdown("#### 🗑️ Hapus Rule FC")
+        st.markdown("#### Hapus Rule FC")
         if len(rules_fc_df) > 0:
             del_fc = st.selectbox(
                 "Pilih rule yang akan dihapus:",
@@ -1161,10 +1134,10 @@ elif menu == "🔐 Admin Panel" and user_role == "admin":
             )
             if del_fc:
                 drid = del_fc.split("]")[0].replace("[", "").strip()
-                if st.button("🗑️ Hapus Rule FC", key="btn_del_fc", type="primary"):
+                if st.button("Hapus Rule FC", key="btn_del_fc", type="primary"):
                     delete_rule_fc(drid)
                     clear_cache()
-                    st.success(f"✅ Rule **{drid}** berhasil dihapus!")
+                    st.success(f"Rule **{drid}** berhasil dihapus!")
                     st.rerun()
 
 

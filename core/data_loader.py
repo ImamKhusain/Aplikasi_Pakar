@@ -36,10 +36,10 @@ def get_symptom_categories(gejala_df):
     Categories are based on the symptom descriptions for baby diseases.
     """
     categories = {
-        "🫁 Gejala Pernapasan": [],
-        "🤒 Gejala Demam & Umum": [],
-        "💧 Gejala Pencernaan": [],
-        "👁️ Gejala Kulit & Lainnya": [],
+        "Gejala Pernapasan": [],
+        "Gejala Demam & Umum": [],
+        "Gejala Pencernaan": [],
+        "Gejala Kulit & Lainnya": [],
     }
 
     for _, row in gejala_df.iterrows():
@@ -52,19 +52,19 @@ def get_symptom_categories(gejala_df):
             'mengi', 'stridor', 'hidung', 'tenggorokan', 'menelan',
             'bibir membiru'
         ]):
-            categories["🫁 Gejala Pernapasan"].append((gid, name))
+            categories["Gejala Pernapasan"].append((gid, name))
         elif any(k in name_lower for k in [
             'demam', 'kejang', 'letargis', 'sadar', 'mengantuk',
             'kaku kuduk', 'berkeringat', 'rewel'
         ]):
-            categories["🤒 Gejala Demam & Umum"].append((gid, name))
+            categories["Gejala Demam & Umum"].append((gid, name))
         elif any(k in name_lower for k in [
             'diare', 'bab', 'muntah', 'perut', 'minum', 'haus',
             'cekung', 'urin', 'dehidrasi', 'nafsu makan',
             'berat badan'
         ]):
-            categories["💧 Gejala Pencernaan"].append((gid, name))
+            categories["Gejala Pencernaan"].append((gid, name))
         else:
-            categories["👁️ Gejala Kulit & Lainnya"].append((gid, name))
+            categories["Gejala Kulit & Lainnya"].append((gid, name))
 
     return categories
