@@ -1,7 +1,5 @@
 # APLIKASI_PAKAR
 
-## APLIKASI_PAKAR adalah aplikasi sistem pakar berbasis web yang digunakan untuk membantu proses diagnosa penyakit pada bayi berdasarkan gejala yang dipilih oleh pengguna. Aplikasi ini menerapkan metode Forward Chaining untuk proses penalaran aturan dan metode Certainty Factor untuk menghitung tingkat kepastian hasil diagnosa.
-
 Aplikasi ini dibangun menggunakan Python dan Streamlit dengan penyimpanan data berbasis SQLite. Sistem menyediakan fitur login pengguna, diagnosa penyakit bayi, pengelolaan data penyakit, data gejala, rules Certainty Factor, rules Forward Chaining, serta panel admin untuk mengelola basis pengetahuan sistem.
 
 ---
